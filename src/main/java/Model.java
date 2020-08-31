@@ -18,4 +18,10 @@ public class Model {
     public void setPrice(Double price) {
         this.price = price;
     }
+
+    @Override
+    public String toString() {
+        return "Symbol: " + symbol + "\n" +
+                "Price: " + price + "\n\n";
+    }
 }
