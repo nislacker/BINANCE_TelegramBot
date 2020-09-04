@@ -294,11 +294,22 @@ public class Bot extends TelegramLongPollingBot {
                 case "\uD83D\uDCBC Показать баланс кошельков":
                     ArrayList<UserPortfolio> userPortfolios = DBManager.getUserPortfoliosByUserId(DBManager.getUserIdByChatId(message.getChatId()));
                     int[] maxLengths = new int[]{0, 0, 0, 0};
+
+                    Double finalBalanceInDollars = 0.0;
+
                     for (UserPortfolio userPortfolio : userPortfolios) {
                         String id = String.valueOf(userPortfolio.getId());
                         String coin = DBManager.getCoinByCurrencyId(userPortfolio.getCurrency_id());
                         String address = userPortfolio.getAddress();
                         String volume = String.format("%.8f", userPortfolio.getVolume());
+
+                        Model m = new Model();
+                        try {
+                            Binance.getSymbolInfo(coin, m);
+                            finalBalanceInDollars += userPortfolio.getVolume() * m.getPrice();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
 
                         if (maxLengths[0] < id.length()) {
                             maxLengths[0] = id.length();
@@ -340,6 +351,9 @@ public class Bot extends TelegramLongPollingBot {
                             values +
 
                             "</code>&parse_mode=HTML";
+                    sendMessage(message.getChatId(), msg);
+
+                    msg = "Total balance, $: " + String.format("%.2f", finalBalanceInDollars);
                     sendMessage(message.getChatId(), msg);
 
                     break;
