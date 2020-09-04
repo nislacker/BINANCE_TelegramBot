@@ -23,7 +23,7 @@ public class Binance {
                 "Price: " + model.getPrice();
     }
 
-    private static JSONObject getJSONFromURL(URL url) throws IOException {
+    public static JSONObject getJSONFromURL(URL url) throws IOException {
         Scanner in = new Scanner((InputStream) url.getContent());
         String result = "";
 

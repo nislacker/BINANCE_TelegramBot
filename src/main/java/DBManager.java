@@ -248,6 +248,7 @@ public class DBManager {
         }
     }
 
+
     public static boolean saveAllCoinsToDB(ArrayList<String> coins) {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 //            System.out.println("Connection done!");
@@ -338,6 +339,72 @@ public class DBManager {
             System.out.println("Something wrong with connection to DB...");
             ex.printStackTrace();
         }
+    }
+
+    public static boolean saveUserAddressToDB(long chat_id, String coin, String address, double volume) {
+
+        try (Connection con = DriverManager.getConnection(url, userName, password)) {
+//            System.out.println("Connection done!");
+
+            Statement stat = con.createStatement();
+
+            int user_id = getUserIdByChatId(chat_id);
+
+            String sql;
+
+            if (address == null) {
+                sql = "INSERT INTO `users_portfolios` (`user_id`, `currency_id`, `volume`) VALUES (null, " + getUserIdByChatId(chat_id) +
+                        "," + getCurrencyIdByCoin(coin) + "," + volume + ")";
+            } else {
+                sql = "INSERT INTO `users_portfolios` (`user_id`, `currency_id`, `address`, `volume`) VALUES (" +
+                        getUserIdByChatId(chat_id) + "," +
+                        getCurrencyIdByCoin(coin) + ",'" +
+                        address + "'," +
+                        volume + ")";
+            }
+
+            System.out.println(getUserIdByChatId(chat_id));
+            System.out.println(getCurrencyIdByCoin(coin));
+            System.out.println(address);
+            System.out.println(volume);
+
+            stat.executeUpdate(sql);
+            System.out.println("sql Insert done!");
+            return true;
+        } catch (SQLException ex) {
+            System.out.println("Something wrong with connection to DB...");
+            ex.printStackTrace();
+            return false;
+        }
+    }
+
+    public static ArrayList<UserPortfolio> getUserPortfoliosByUserId(int user_id) {
+        System.out.println(user_id);
+        ArrayList<UserPortfolio> userPortfolios = new ArrayList<>();
+
+        try (Connection con = DriverManager.getConnection(url, userName, password)) {
+
+            Statement stat = con.createStatement();
+            String sql = "SELECT `id`, `user_id`,`currency_id`,`address`,`volume` FROM `users_portfolios` WHERE `user_id` = " + user_id;
+
+            ResultSet res = stat.executeQuery(sql);
+
+            while (res.next()) {
+                UserPortfolio userPortfolio = new UserPortfolio();
+                userPortfolio.setId(res.getInt("id"));
+                userPortfolio.setUser_id(res.getInt("user_id"));
+                userPortfolio.setCurrency_id(res.getInt("currency_id"));
+                userPortfolio.setAddress(res.getString("address"));
+                userPortfolio.setVolume(res.getDouble("volume"));
+                userPortfolios.add(userPortfolio);
+            }
+
+        } catch (SQLException ex) {
+            System.out.println("Something wrong with connection to DB...");
+            ex.printStackTrace();
+        }
+
+        return userPortfolios;
     }
 
 }
