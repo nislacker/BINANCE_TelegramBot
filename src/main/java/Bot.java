@@ -1,9 +1,4 @@
 import com.google.common.base.Strings;
-import com.mysql.cj.util.StringUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.telegram.telegrambots.ApiContextInitializer;
 import org.telegram.telegrambots.TelegramBotsApi;
 import org.telegram.telegrambots.api.methods.send.SendMessage;
@@ -15,22 +10,21 @@ import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.sql.Time;
+import java.io.IOException;
 import java.util.*;
 
 public class Bot extends TelegramLongPollingBot {
 
-    private static ArrayList<Model> models = new ArrayList<>();
+    private final int ADDRESS_LENGTH = 11;
+
+    private static ArrayList<Symbol> symbols = new ArrayList<>();
     private static ArrayList<String> allCoins = new ArrayList<>();
     private static ArrayList<String> userCoins = new ArrayList<>(); // current user coins
+    private static TreeSet<String> сoinsForDelete = new TreeSet<>(); // current user coins
     private static Integer add_watch_list_MessageId = -1;
+    private static Integer del_watch_list_MessageId = -1;
     private static Integer show_watch_list_MessageId = -1;
     private static Integer add_price_level_MessageId = -1;
     private static Integer add_addresses_to_watch_MessageId = -1;
@@ -42,33 +36,8 @@ public class Bot extends TelegramLongPollingBot {
 
     public static void main(String[] args) {
 
-        //System.out.println(getPaddingString("test", 10, PaddingType.CENTER));
-
-//        System.out.println(StringUtils.padString("test", 10));
-
-/*
-        String ETH_address = "0x6431103b981fbf6e0d6215a9e885e68942672ceb";
-        String BTC_address = "bc1qy8wyq6wt7mlu22haa83f4647g863aknquhpcqq";
-
-        Double finalBalanceBTC = 0.0;
-        Double finalBalanceETH = 0.0;
-
-        finalBalanceBTC = Blockcypher.getBalanceBy_BTC_ETH_WalletAddress(ETH_address, "eth"); //getBalanceByAnyWalletAddress(ETH_address);
-//      System.out.printf("%.8f",
-        finalBalanceETH = Blockcypher.getBalanceBy_BTC_ETH_WalletAddress(BTC_address, "btc"); //getBalanceByAnyWalletAddress(BTC_address);
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println(finalBalanceBTC);
-        System.out.println(finalBalanceETH);
-*/
-        /*
-        String coin = Blockcypher.getCoinByWalletAddress(address);
-        Double balance = Blockcypher.getBalanceByWalletAddress(address, coin);
-*/
+//        String ETH_address = "0x6431103b981fbf6e0d6215a9e885e68942672ceb";
+//        String BTC_address = "bc1qy8wyq6wt7mlu22haa83f4647g863aknquhpcqq";
 
         ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
@@ -79,7 +48,6 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-        /* */
     }
 
     /**
@@ -125,11 +93,12 @@ public class Bot extends TelegramLongPollingBot {
                         int id = userPriceLevel.getId();
                         double price_level = userPriceLevel.getPrice_level();
                         boolean is_higher_level = userPriceLevel.isIs_higher_level();
-                        Model model = models.get(userPriceLevel.getCurrency_id() - 1);
-                        Double cur_price = model.getPrice();
+                        Symbol symbol = symbols.get(userPriceLevel.getCurrency_id() - 1);
+                        Double cur_price = symbol.getPrice();
 
                         if (((cur_price <= price_level) && !is_higher_level) ||
                                 ((cur_price >= price_level) && is_higher_level)) {
+
                             // notify user
 
                             long chat_id = DBManager.getChatIdByUserId(userPriceLevel.getUser_id());
@@ -140,7 +109,7 @@ public class Bot extends TelegramLongPollingBot {
 
                             sendMessage(chat_id, "!!! Достигнут ценовой уровень: " + price_level);
                             try {
-                                sendMessage(chat_id, "!!! Текущий курс " + coin + ":\n" + Binance.getSymbolInfo(coin, new Model()));
+                                sendMessage(chat_id, "!!! Текущий курс " + coin + ":\n" + Binance.getSymbolInfo(coin, new Symbol()));
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -167,7 +136,7 @@ public class Bot extends TelegramLongPollingBot {
 
     public static void sendMessage(long chat_id, String message) {
         try {
-            Map<String, String> http_query = new HashMap<String, String>();
+            Map<String, String> http_query = new HashMap<>();
             http_query.put("text", message);
             String text = http_build_query(http_query);
 
@@ -182,11 +151,11 @@ public class Bot extends TelegramLongPollingBot {
     private static void getAllCoins() {
         // maybe it should be in parallel threat
         try {
-            models = Binance.getAllSymbols();
-            allCoins = new ArrayList<>(models.size());
+            symbols = Binance.getAllSymbols();
+            allCoins = new ArrayList<>(symbols.size());
 
-            for (Model model : models) {
-                String coin = model.getSymbol();
+            for (Symbol symbol : symbols) {
+                String coin = symbol.getSymbol();
                 allCoins.add(coin);
             }
 /* !!!!!!!!
@@ -201,20 +170,19 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    private static void printModels(ArrayList<Model> models) {
-        for (Model model : models) {
-            System.out.println(model);
+    private static void printSymbols(ArrayList<Symbol> symbols) {
+        for (Symbol symbol : symbols) {
+            System.out.println(symbol);
         }
     }
 
     public void sendMsgToChat(long chat_id, String text) {
 
-//        System.out.println(text);
-
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(chat_id);
         sendMessage.setText(text);
+
         try {
             setButtons(sendMessage);
 //            execute(sendMessage);
@@ -227,15 +195,16 @@ public class Bot extends TelegramLongPollingBot {
 
     public void sendMsg(Message message, String text, boolean isReplyToMessage) {
 
-//        System.out.println(text);
-
         SendMessage sendMessage = new SendMessage();
         sendMessage.enableMarkdown(true);
         sendMessage.setChatId(message.getChatId());
+
         if (isReplyToMessage) {
             sendMessage.setReplyToMessageId(message.getMessageId());
         }
+
         sendMessage.setText(text);
+
         try {
             setButtons(sendMessage);
 //            execute(sendMessage);
@@ -249,13 +218,13 @@ public class Bot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update) {
 
         Message message = update.getMessage();
-        Model model = new Model(); // ???
+        Symbol symbol = new Symbol();
         long chat_id = message.getChatId();
         DBManager.insertNewUser(chat_id);
         userCoins = DBManager.getUserCoins(chat_id);
-        System.out.println(update.getMessage().getText()); // delete in the end of developing
+//        System.out.println(update.getMessage().getText()); // delete in the end of developing
 
-        if (message != null & message.hasText()) {
+        if (message != null && message.hasText()) {
 
             String msgText = message.getText();
 
@@ -268,21 +237,27 @@ public class Bot extends TelegramLongPollingBot {
                 case "/settings":
                     sendMsg(message, "Что будем настраивать?", true);
                     break;
-                case "\uD83D\uDCB0 Добавить новые курсы":
+                case "\uD83D\uDCB0 Добавить курсы":
                 case "/add_watch_list":
                     // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
                     add_watch_list_MessageId = message.getMessageId();
                     sendMsg(message, "Введите список существующих криптовалют через пробел(ы) или с новых строк:", true);
                     break;
-                case "\uD83D\uDCC8 Показать мои курсы":
+                case "⌫ Удалить курсы":
+                case "/del_watch_list":
+                    // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
+                    del_watch_list_MessageId = message.getMessageId();
+                    sendMsg(message, "Введите список криптовалют через пробел(ы) или с новых строк:", true);
+                    break;
+                case "\uD83D\uDCC8 Показать курсы":
                 case "/show_watch_list":
                     // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
                     show_watch_list_MessageId = message.getMessageId();
-                    //DBManager.getUserCoins(chat_id)
+                    DBManager.getUserCoins(chat_id);
 
                     sendMsg(message, "Ваши отслеживаемые курсы:\n", true);
                     for (String userCoin : userCoins) {
-                        sendCoinInfo(userCoin, model, message, false);
+                        sendCoinInfo(userCoin, symbol, message, false);
                     }
                     break;
                 case "\uD83D\uDCC9 Добавить уровень цены для уведомления":
@@ -293,60 +268,59 @@ public class Bot extends TelegramLongPollingBot {
 
                 case "\uD83D\uDCBC Показать баланс кошельков":
                     ArrayList<UserPortfolio> userPortfolios = DBManager.getUserPortfoliosByUserId(DBManager.getUserIdByChatId(message.getChatId()));
-                    int[] maxLengths = new int[]{0, 0, 0, 0};
+                    int[] maxLengths = {0, 0, 0};
 
                     Double finalBalanceInDollars = 0.0;
+                    ArrayList<Double> volumes = new ArrayList<>(userPortfolios.size());
 
                     for (UserPortfolio userPortfolio : userPortfolios) {
-                        String id = String.valueOf(userPortfolio.getId());
+
                         String coin = DBManager.getCoinByCurrencyId(userPortfolio.getCurrency_id());
                         String address = userPortfolio.getAddress();
-                        String volume = String.format("%.8f", userPortfolio.getVolume());
+                        Double volume = Blockcypher.getBalanceByAnyWalletAddress(address);   //String.format("%.8f", userPortfolio.getVolume());
+                        volumes.add(volume);
 
-                        Model m = new Model();
+                        Symbol m = new Symbol();
                         try {
                             Binance.getSymbolInfo(coin, m);
-                            finalBalanceInDollars += userPortfolio.getVolume() * m.getPrice();
+                            finalBalanceInDollars += volume * m.getPrice();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
 
-                        if (maxLengths[0] < id.length()) {
-                            maxLengths[0] = id.length();
+                        if (coin != null && maxLengths[0] < coin.length()) {
+                            maxLengths[0] = coin.length();
                         }
-                        if (coin != null && maxLengths[1] < coin.length()) {
-                            maxLengths[1] = coin.length();
+                        if (maxLengths[1] < address.length()) {
+                            maxLengths[1] = address.length();
                         }
-                        if (maxLengths[2] < address.length()) {
-                            maxLengths[2] = address.length();
-                        }
-                        if (maxLengths[3] < volume.length()) {
-                            maxLengths[3] = volume.length();
+                        if (maxLengths[2] < volume.toString().length()) {
+                            maxLengths[2] = volume.toString().length();
                         }
                     }
 
                     String values = "";
 
+                    int j = 0;
                     for (UserPortfolio userPortfolio : userPortfolios) {
                         String coin = DBManager.getCoinByCurrencyId(userPortfolio.getCurrency_id());
-                        String volume = String.format("%.8f", userPortfolio.getVolume());
-                        String id = String.valueOf(userPortfolio.getId());
-                        values += "|" + getPaddingString(id, id.length(), PaddingType.CENTER) + "|" +
-                                getPaddingString(coin, coin.length(), PaddingType.CENTER) + "|" +
-                                getPaddingString(cutString(userPortfolio.getAddress(), 21), 21, PaddingType.CENTER) + "|" +
-                                getPaddingString(volume, volume.length() + 5, PaddingType.CENTER) + "|\n";
+                        String volume = String.format("%.8f", volumes.get(j++));
+                        coin = coin.substring(0, 3) + " ";
+                        values += "|" +
+                                getPaddingString(coin, coin.length() - 1, PaddingType.CENTER) + "|" +
+                                getPaddingString(cutString(userPortfolio.getAddress(), ADDRESS_LENGTH), ADDRESS_LENGTH, PaddingType.CENTER) + "|" +
+                                getPaddingString(volume, volume.length(), PaddingType.CENTER) + "|\n";
                     }
 
                     String msg = "<code>\n" +
-                            "|" + getPaddingString("#", maxLengths[0] + 2, PaddingType.CENTER) + "|" +
-                            getPaddingString("Coin", maxLengths[1] + 2, PaddingType.CENTER) + "|" +
-                            getPaddingString("Address", 21 + 2, PaddingType.CENTER) + "|" +
-                            getPaddingString("Final Balance", maxLengths[3] - 2, PaddingType.CENTER) + "|\n" +
+                            "|" +
+                            getPaddingString("$$$", maxLengths[0] - 3, PaddingType.CENTER) + " |" +
+                            getPaddingString("Address", ADDRESS_LENGTH + 5, PaddingType.CENTER) + "|" +
+                            getPaddingString("Balance", maxLengths[2] + 4, PaddingType.CENTER) + " |\n" +
 
-                            "|" + Strings.repeat("-", maxLengths[0] + 2) +
-                            "|" + Strings.repeat("-", maxLengths[1] + 2) +
-                            "|" + Strings.repeat("-", 21 + 2) +
-                            "|" + Strings.repeat("-", maxLengths[3] + 2 + 3) + "|\n" +
+                            "|" + Strings.repeat("-", maxLengths[0] - 3) +
+                            "|" + Strings.repeat("-", ADDRESS_LENGTH) +
+                            "|" + Strings.repeat("-", maxLengths[2]) + "|\n" +
 
                             values +
 
@@ -364,58 +338,9 @@ public class Bot extends TelegramLongPollingBot {
                     sendMsg(message, "Введите адрес кошелька:", false);
                     break;
                 default:
-                    // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
-                    if (add_price_level_MessageId.equals(message.getMessageId() - 2)) {
+                    if (del_watch_list_MessageId.equals(message.getMessageId() - 2)) {
 
-                        String[] coin_price = msgText.split("\\s+"); // \\s+ -- любое сочетание пробельных символов
-                        String coin = coin_price[0];
-                        String priceLevelStr = coin_price[1].replace(',', '.');
-                        coin = convertSymbolName(coin);
-
-                        boolean isGoodCoin = false;
-                        boolean isGoodPrice = false;
-
-                        try {
-                            if (allCoins.contains(coin)) {
-                                isGoodCoin = true;
-                                // берем текущую цену курса
-                                Binance.getSymbolInfo(coin, model);
-                            } else {
-                                throw new IOException();
-                            }
-                        } catch (IOException e) {
-                            switch (lang) {
-                                case "ru":
-                                    sendMsg(message, "Неизвестный символ.", true);
-                                    break;
-                                case "en":
-                                    sendMsg(message, "Unknown symbol.", true);
-                                    break;
-                            }
-                            e.printStackTrace();
-                        }
-
-                        double priceLevel = 0.0;
-
-                        try {
-                            priceLevel = Double.parseDouble(priceLevelStr);
-                            isGoodPrice = true;
-                        } catch (NumberFormatException e) {
-                            sendMsg(message, "Ошибка в цене:" + priceLevelStr, true);
-                            e.printStackTrace();
-                        }
-
-                        if (isGoodCoin && isGoodPrice) {
-                            sendMsg(message, "Вы ввели курс: " + coin + "\nПо цене: " + priceLevel + "\nПри достижении цены Вы получите уведомление.\nЖирного Вам профита!", false);
-                            boolean isHigherLevel = priceLevel > model.getPrice(); // введенная цена выше (1) или ниже/равна (0) текущей цены
-                            DBManager.saveUserPriceLevel(chat_id, coin, priceLevel, isHigherLevel);
-                        }
-
-                    } else
-                        // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
-                        if (add_watch_list_MessageId.equals(message.getMessageId() - 2)) {
-
-                            String[] coins = msgText.split("\\s+"); // \\s+ -- любое сочетание пробельных символов
+                        String[] coins = msgText.split("\\s+"); // \\s+ -- любое сочетание пробельных символов
 /*
                             switch (lang) {
                                 case "ru":
@@ -426,104 +351,202 @@ public class Bot extends TelegramLongPollingBot {
                                     break;
                             }*/
 
-                            for (int i = 0; i < coins.length; i++) {
-                                coins[i] = convertSymbolName(coins[i]);
-                                //System.out.println(coins[i]);
+                        for (int i = 0; i < coins.length; i++) {
+                            coins[i] = convertSymbolName(coins[i]);
+                        }
+
+                        deleteUserCoins(coins);
+
+                        // удалять только монеты, которые есть в списке
+                        DBManager.deleteUserCoinsFromDB(chat_id, сoinsForDelete);
+
+                        switch (lang) {
+                            case "ru":
+                                System.out.println("\nУдалённые монеты:\n\n");
+                                break;
+                            case "en":
+                                System.out.println("\nDeleted coins:\n\n");
+                                break;
+                        }
+
+                        String coinsNames = "";
+
+                        for (String сoinForDelete : сoinsForDelete) {
+                            System.out.println(сoinForDelete);
+                            coinsNames += сoinForDelete + "\n";
+                        }
+
+                        сoinsForDelete.clear();
+
+                        switch (lang) {
+                            case "ru":
+                                sendMsg(message, "Удаленные монеты:\n" + coinsNames, true);
+                                break;
+                            case "en":
+                                sendMsg(message, "Deleted coins:\n" + coinsNames, true);
+                                break;
+                        }
+
+                    } else
+                        // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
+                        if (add_price_level_MessageId.equals(message.getMessageId() - 2)) {
+
+                            String[] coin_price = msgText.split("\\s+"); // \\s+ -- любое сочетание пробельных символов
+                            String coin = coin_price[0];
+                            String priceLevelStr = coin_price[1].replace(',', '.');
+                            coin = convertSymbolName(coin);
+
+                            boolean isGoodCoin = false;
+                            boolean isGoodPrice = false;
+
+                            try {
+                                if (allCoins.contains(coin)) {
+                                    isGoodCoin = true;
+                                    // берем текущую цену курса
+                                    Binance.getSymbolInfo(coin, symbol);
+                                } else {
+                                    throw new IOException();
+                                }
+                            } catch (IOException e) {
+
+                                switch (lang) {
+                                    case "ru":
+                                        sendMsg(message, "Неизвестный символ.", true);
+                                        break;
+                                    case "en":
+                                        sendMsg(message, "Unknown symbol.", true);
+                                        break;
+                                }
+//                            e.printStackTrace();
                             }
 
-                            filterUserCoins(coins);
+                            double priceLevel = 0.0;
 
-                            // добавлять только монеты, которых ещё нет в списке
-                            DBManager.saveUserCoinsToDB(chat_id, userCoins);
-
-                            switch (lang) {
-                                case "ru":
-                                    System.out.println("\nДобавленные монеты:\n\n");
-                                    break;
-                                case "en":
-                                    System.out.println("\nAdded coins:\n\n");
-                                    break;
+                            try {
+                                priceLevel = Double.parseDouble(priceLevelStr);
+                                isGoodPrice = true;
+                            } catch (NumberFormatException e) {
+                                sendMsg(message, "Ошибка в цене:" + priceLevelStr, true);
+                                e.printStackTrace();
                             }
 
-                            String coinsNames = "";
-
-                            for (String userCoin : userCoins) {
-                                System.out.println(userCoin);
-                                coinsNames += userCoin + "\n";
-                            }
-
-                            switch (lang) {
-                                case "ru":
-                                    sendMsg(message, "Добавленные монеты:\n" + coinsNames, true);
-                                    break;
-                                case "en":
-                                    sendMsg(message, "Added coins:\n" + coinsNames, true);
-                                    break;
+                            if (isGoodCoin && isGoodPrice) {
+                                sendMsg(message, "Вы ввели курс: " + coin + "\nПо цене: " + priceLevel + "\nПри достижении цены Вы получите уведомление.\nЖирного Вам профита!", false);
+                                boolean isHigherLevel = priceLevel > symbol.getPrice(); // введенная цена выше (1) или ниже/равна (0) текущей цены
+                                DBManager.saveUserPriceLevel(chat_id, coin, priceLevel, isHigherLevel);
                             }
 
                         } else
                             // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
-                            if (user_entered_wallet_balance.equals(message.getMessageId() - 2)) {
-                                if (Double.parseDouble(msgText) < 0) {
-                                    sendMsg(message, "Баланс кошелька не может быть отрицательным", true);
-                                    user_entered_wallet_balance = message.getMessageId();
+                            if (add_watch_list_MessageId.equals(message.getMessageId() - 2)) {
+
+                                String[] coins = msgText.split("\\s+"); // \\s+ -- любое сочетание пробельных символов
+/*
+                            switch (lang) {
+                                case "ru":
+                                    System.out.println("Вы ввели такие монеты: "); // + msgText);
+                                    break;
+                                case "en":
+                                    System.out.println("You entered this coins: "); // + msgText);
+                                    break;
+                            }*/
+
+                                for (int i = 0; i < coins.length; i++) {
+                                    coins[i] = convertSymbolName(coins[i]);
                                 }
+
+                                filterUserCoins(coins);
+
+                                // добавлять только монеты, которых ещё нет в списке
+                                DBManager.saveUserCoinsToDB(chat_id, userCoins);
+
+                                switch (lang) {
+                                    case "ru":
+                                        System.out.println("\nДобавленные монеты:\n\n");
+                                        break;
+                                    case "en":
+                                        System.out.println("\nAdded coins:\n\n");
+                                        break;
+                                }
+
+                                String coinsNames = "";
+
+                                for (String userCoin : userCoins) {
+                                    System.out.println(userCoin);
+                                    coinsNames += userCoin + "\n";
+                                }
+
+                                switch (lang) {
+                                    case "ru":
+                                        sendMsg(message, "Добавленные монеты:\n" + coinsNames, true);
+                                        break;
+                                    case "en":
+                                        sendMsg(message, "Added coins:\n" + coinsNames, true);
+                                        break;
+                                }
+
                             } else
                                 // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
-                                if (add_addresses_to_watch_MessageId.equals(message.getMessageId() - 2)) {
-                                    String address = msgText;
-                                    System.out.println("address " + address);
+                                if (user_entered_wallet_balance.equals(message.getMessageId() - 2)) {
+                                    if (Double.parseDouble(msgText) < 0) {
+                                        sendMsg(message, "Баланс кошелька не может быть отрицательным", true);
+                                        user_entered_wallet_balance = message.getMessageId();
+                                    }
+                                } else
+                                    // !!! КОСТЫЛЬ !!! -- для отслеживания ответа юзера именно на это сообщение бота
+                                    if (add_addresses_to_watch_MessageId.equals(message.getMessageId() - 2)) {
+                                        String address = msgText;
+                                        System.out.println("address " + address);
 
-                                    // 2 проверки, т.к. на 1й сайт может забанить запрос
-                                    if (Blockcypher.isValidAddress1(address) == null && Blockcypher.isValidAddress2(address) == null) {
-                                        sendMsg(message, "Неверный адрес кошелька!", true);
-                                    } else {
-                                        try {
-                                            Thread.sleep(500);
-                                        } catch (InterruptedException e) {
-                                            e.printStackTrace();
-                                        }
-                                        // Валидный адрес кошелька => просим ввести объём если не получается спарсить
-                                        String coin = Blockcypher.getCoinByWalletAddress(address);
-                                        Double finalBalance = Blockcypher.getBalanceBy_BTC_ETH_WalletAddress(address, coin);
-                                        if (finalBalance == null) {
-                                            finalBalance = Blockcypher.getBalanceByAnyWalletAddress(address);
-                                        }
-                                        if (finalBalance == null) {
-                                            sendMsg(message, "Введите баланс кошелька (не удалось получить):", false);
-                                            user_entered_wallet_balance = message.getMessageId();
+                                        // 2 проверки, т.к. на 1й сайт может забанить запрос
+                                        if (Blockcypher.isValidAddress1(address) == null && Blockcypher.isValidAddress2(address) == null) {
+                                            sendMsg(message, "Неверный адрес кошелька!", true);
                                         } else {
-                                            // добавляем монету, адрес, баланс в БД
-                                            coin = convertSymbolName(coin);
-                                            DBManager.saveUserAddressToDB(message.getChatId(), coin, address, finalBalance);
+                                            try {
+                                                Thread.sleep(500);
+                                            } catch (InterruptedException e) {
+                                                e.printStackTrace();
+                                            }
+                                            // Валидный адрес кошелька => просим ввести объём если не получается спарсить
+                                            String coin = Blockcypher.getCoinByWalletAddress(address);
+                                            Double finalBalance = Blockcypher.getBalanceBy_BTC_ETH_WalletAddress(address, coin);
+                                            if (finalBalance == null) {
+                                                finalBalance = Blockcypher.getBalanceByAnyWalletAddress(address);
+                                            }
+                                            if (finalBalance == null) {
+                                                sendMsg(message, "Введите баланс кошелька (не удалось получить):", false);
+                                                user_entered_wallet_balance = message.getMessageId();
+                                            } else {
+                                                // добавляем монету, адрес, баланс в БД
+                                                coin = convertSymbolName(coin);
+                                                DBManager.saveUserAddressToDB(message.getChatId(), coin, address, finalBalance);
 
-                                            // Create QR-code from wallet address
-                                            //sendMsg(message, "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + address, false);
+                                                // Create QR-code from wallet address
+                                                //sendMsg(message, "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + address, false);
+                                            }
+                                        }
+                                    } else {
+                                        if (msgText.length() < 10) {
+                                            sendCoinInfo(msgText, symbol, message, true);
                                         }
                                     }
-                                } else {
-                                    if (msgText.length() < 10) {
-                                        sendCoinInfo(msgText, model, message, true);
-                                    }
-                                }
                     break;
             }
         }
     }
 
     public static String cutString(String s, int finalLength) {
-        //…
         String res = s.substring(0, finalLength / 2);
         int rest = s.length() - (finalLength / 2);
         res += "…" + s.substring(rest);
         return res;
     }
 
-    private void sendCoinInfo(String coinName, Model model, Message message, boolean isReplyToMessage) {
+    private void sendCoinInfo(String coinName, Symbol symbol, Message message, boolean isReplyToMessage) {
         coinName = convertSymbolName(coinName);
 
         try {
-            sendMsg(message, Binance.getSymbolInfo(coinName, model), isReplyToMessage);
+            sendMsg(message, Binance.getSymbolInfo(coinName, symbol), isReplyToMessage);
         } catch (IOException e) {
             switch (lang) {
                 case "ru":
@@ -533,8 +556,6 @@ public class Bot extends TelegramLongPollingBot {
                     sendMsg(message, "Unknown symbol.", true);
                     break;
             }
-
-            e.printStackTrace();
         }
     }
 
@@ -545,7 +566,38 @@ public class Bot extends TelegramLongPollingBot {
         return msgText;
     }
 
+    private static void deleteUserCoins(String[] coins) {
+        for (String coin : coins) {
+            if (allCoins.contains(coin)) {
+                if (userCoins.contains(coin)) {
+                    userCoins.remove(coin);
+                    сoinsForDelete.add(coin);
+                } else {
+                    switch (lang) {
+                        case "ru":
+                            System.out.println("Курс \"" + coin + "\" уже отсутствует в Вашем списке курсов.");
+                            break;
+                        case "en":
+                            System.out.println("Coin \"" + coin + "\" is already not exists in your coins list.");
+                            break;
+                    }
+
+                }
+            } else {
+                switch (lang) {
+                    case "ru":
+                        System.out.println("Курс \"" + coin + "\" отсутствует на бирже BINANCE.");
+                        break;
+                    case "en":
+                        System.out.println("Coin \"" + coin + "\" doesn't exist on BINANCE.");
+                        break;
+                }
+            }
+        }
+    }
+
     private static void filterUserCoins(String[] coins) {
+        userCoins.clear();
         for (String coin : coins) {
             if (allCoins.contains(coin)) {
                 if (!userCoins.contains(coin)) {
@@ -559,7 +611,6 @@ public class Bot extends TelegramLongPollingBot {
                             System.out.println("Coin \"" + coin + "\" is already exists in user's coins list.");
                             break;
                     }
-
                 }
             } else {
                 switch (lang) {
@@ -588,8 +639,9 @@ public class Bot extends TelegramLongPollingBot {
         KeyboardRow keyboardRow4 = new KeyboardRow();
         KeyboardRow keyboardRow5 = new KeyboardRow();
 
-        keyboardRow1.add(new KeyboardButton("\uD83D\uDCB0 Добавить новые курсы"));
-        keyboardRow1.add(new KeyboardButton("\uD83D\uDCC8 Показать мои курсы"));
+        keyboardRow1.add(new KeyboardButton("\uD83D\uDCB0 Добавить курсы"));
+        keyboardRow1.add(new KeyboardButton("⌫ Удалить курсы"));
+        keyboardRow1.add(new KeyboardButton("\uD83D\uDCC8 Показать курсы"));
         keyboardRow2.add(new KeyboardButton("\uD83D\uDCC9 Добавить уровень цены для уведомления"));
         keyboardRow3.add(new KeyboardButton("\uD83D\uDCBC Добавить адреса кошельков для слежения"));
         keyboardRow4.add(new KeyboardButton("\uD83D\uDCBC Показать баланс кошельков"));
@@ -612,21 +664,28 @@ public class Bot extends TelegramLongPollingBot {
 
     public static String getPaddingString(String s, int finalLength, PaddingType paddingType) {
         int sLength = s.length();
+        finalLength -= 2;
         if (finalLength < s.length()) {
-            return " " + s + " ";
+            return s;
+//            return " " + s + " ";
         }
         int diff = finalLength - sLength - 1;
         diff = diff <= 0 ? 1 : diff;
+        diff -= 2;
         switch (paddingType) {
             case LEFT:
-                return String.format("%" + diff + "s", " ") + s + " ";
+                return String.format("%" + diff + "s", " ") + s;
+//                return String.format("%" + diff + "s", " ") + s + " ";
             case RIGHT:
-                return " " + s + String.format("%" + diff + "s", " ");
+                return s + String.format("%" + diff + "s", " ");
+//            return " " + s + String.format("%" + diff + "s", " ");
             case CENTER:
                 int half = diff / 2;
+                half = Math.max(half, 1);
                 int rest = diff - half;
-                rest = rest <= 0 ? 1 : rest;
-                return String.format("%" + (half + 1) + "s", " ") + s + String.format("%" + rest + "s", " ");
+                rest = Math.max(rest, 1);
+                return String.format("%" + (half) + "s", " ") + s + String.format("%" + rest + "s", " ");
+//            return String.format("%" + (half + 1) + "s", " ") + s + String.format("%" + rest + "s", " ");
         }
         return null;
     }

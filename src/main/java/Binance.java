@@ -5,22 +5,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 public class Binance {
 
-    //    9d44f052272379f446d8da2d428f3312
-    public static String getSymbolInfo(String symbol, Model model) throws IOException {
+    public static String getSymbolInfo(String symbol, Symbol symbolModel) throws IOException {
         URL url = new URL("https://api.binance.com/api/v1/ticker/price?symbol=" + symbol);
 
         JSONObject jsonObject = Binance.getJSONFromURL(url);
 
-        model.setSymbol(jsonObject.getString("symbol"));
-        model.setPrice(jsonObject.getDouble("price"));
+        symbolModel.setSymbol(jsonObject.getString("symbol"));
+        symbolModel.setPrice(jsonObject.getDouble("price"));
 
-        return "Symbol: " + model.getSymbol() + "\n" +
-                "Price: " + model.getPrice();
+        return "Symbol: " + symbolModel.getSymbol() + "\n" +
+                "Price: " + symbolModel.getPrice();
     }
 
     public static JSONObject getJSONFromURL(URL url) throws IOException {
@@ -34,7 +32,7 @@ public class Binance {
         return new JSONObject(result);
     }
 
-    public static ArrayList<Model> getAllSymbols() throws IOException {
+    public static ArrayList<Symbol> getAllSymbols() throws IOException {
         URL url = new URL("https://api.binance.com/api/v1/ticker/price");
 
         Scanner in = new Scanner((InputStream) url.getContent());
@@ -46,16 +44,16 @@ public class Binance {
         JSONArray jsonArray = new JSONArray(result);
 
         int jsonArrLength = jsonArray.length();
-        ArrayList<Model> models = new ArrayList<>(jsonArrLength);
+        ArrayList<Symbol> symbols = new ArrayList<>(jsonArrLength);
 
         for (int i = 0; i < jsonArrLength; i++) {
-            Model model = new Model();
+            Symbol symbolModel = new Symbol();
             JSONObject jsonObj = jsonArray.getJSONObject(i);
-            model.setSymbol(jsonObj.getString("symbol"));
-            model.setPrice(jsonObj.getDouble("price"));
-            models.add(model);
+            symbolModel.setSymbol(jsonObj.getString("symbol"));
+            symbolModel.setPrice(jsonObj.getDouble("price"));
+            symbols.add(symbolModel);
         }
 
-        return models;
+        return symbols;
     }
 }

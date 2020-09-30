@@ -6,11 +6,8 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigInteger;
 import java.net.URL;
 import java.net.URLConnection;
-import java.util.Scanner;
-
 
 public class Blockcypher {
 //    https://api.blockcypher.com/v1/btc/main/addrs/bc1qy8wyq6wt7mlu22haa83f4647g863aknquhpcqq/balance
@@ -133,6 +130,4 @@ public class Blockcypher {
         }
         return null;
     }
-
-
 }
