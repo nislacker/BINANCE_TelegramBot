@@ -266,7 +266,7 @@ public class Bot extends TelegramLongPollingBot {
                     sendMsg(message, "При достижении цены до заданного уровня Вам придет уведомление.\nВведите курс и цену через пробел:", false);
                     break;
 
-                case "\uD83D\uDCBC Показать баланс кошельков":
+                case "\uD83D\uDCBC Показать кошельки":
                     ArrayList<UserPortfolio> userPortfolios = DBManager.getUserPortfoliosByUserId(DBManager.getUserIdByChatId(message.getChatId()));
                     int[] maxLengths = {0, 0, 0};
 
@@ -332,7 +332,7 @@ public class Bot extends TelegramLongPollingBot {
 
                     break;
 
-                case "\uD83D\uDCBC Добавить адреса кошельков для слежения":
+                case "\uD83D\uDCBC Добавить кошельки":
                 case "/add_addresses_to_watch":
                     add_addresses_to_watch_MessageId = message.getMessageId();
                     sendMsg(message, "Введите адрес кошелька:", false);
@@ -637,22 +637,20 @@ public class Bot extends TelegramLongPollingBot {
         KeyboardRow keyboardRow2 = new KeyboardRow();
         KeyboardRow keyboardRow3 = new KeyboardRow();
         KeyboardRow keyboardRow4 = new KeyboardRow();
-        KeyboardRow keyboardRow5 = new KeyboardRow();
 
         keyboardRow1.add(new KeyboardButton("\uD83D\uDCB0 Добавить курсы"));
         keyboardRow1.add(new KeyboardButton("⌫ Удалить курсы"));
         keyboardRow1.add(new KeyboardButton("\uD83D\uDCC8 Показать курсы"));
         keyboardRow2.add(new KeyboardButton("\uD83D\uDCC9 Добавить уровень цены для уведомления"));
-        keyboardRow3.add(new KeyboardButton("\uD83D\uDCBC Добавить адреса кошельков для слежения"));
-        keyboardRow4.add(new KeyboardButton("\uD83D\uDCBC Показать баланс кошельков"));
-        keyboardRow5.add(new KeyboardButton("⚙ Настройки"));
-        keyboardRow5.add(new KeyboardButton("ℹ️ Справка"));
+        keyboardRow3.add(new KeyboardButton("\uD83D\uDCBC Добавить кошельки"));
+        keyboardRow3.add(new KeyboardButton("\uD83D\uDCBC Показать кошельки"));
+        keyboardRow4.add(new KeyboardButton("⚙ Настройки"));
+        keyboardRow4.add(new KeyboardButton("ℹ️ Справка"));
 
         keyboardRowList.add(keyboardRow1);
         keyboardRowList.add(keyboardRow2);
         keyboardRowList.add(keyboardRow3);
         keyboardRowList.add(keyboardRow4);
-        keyboardRowList.add(keyboardRow5);
         replyKeyboardMarkup.setKeyboard(keyboardRowList);
     }
 
