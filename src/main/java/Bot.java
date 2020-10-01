@@ -43,7 +43,8 @@ public class Bot extends TelegramLongPollingBot {
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
 
         try {
-            Bot.startThread();
+            Bot.startThreadForCheckPriceLevels();
+            Bot.startThreadForCheckWalletBalanceChange();
             telegramBotsApi.registerBot(new Bot());
         } catch (TelegramApiException e) {
             e.printStackTrace();
@@ -78,7 +79,63 @@ public class Bot extends TelegramLongPollingBot {
         return reString;
     }
 
-    private static void startThread() {
+    private static void startThreadForCheckWalletBalanceChange() {
+
+        Thread checkIsAnyWalletBalanceChange_Thread = new Thread(() -> {
+
+            while (true) {
+                ArrayList<UserPortfolio> userPortfolios = DBManager.getAllUserPortfolios();
+                long old_chat_id = 0;
+
+                for (UserPortfolio userPortfolio : userPortfolios) {
+                    Long id = userPortfolio.getId();
+                    String address = userPortfolio.getAddress();
+                    Double oldBalance = userPortfolio.getBalance();
+                    Double newBalance = Blockcypher.getBalanceByAnyWalletAddress(address);
+
+                    Double diff = newBalance - oldBalance;
+
+                    if (Math.abs(diff) >= 0.00000001) {
+
+                        System.out.println(address + ": " + oldBalance + " -> " + newBalance + (diff >= 0 ? "+" + diff : diff));
+
+                        // notify user
+
+                        Long chat_id = DBManager.getChatIdByUserId(userPortfolio.getUser_id());
+
+                        if (old_chat_id == chat_id) {
+                            try {
+                                Thread.sleep(1000 / 20); // Telegram API ограничение 30 сообщений в секунду
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        sendMessage(chat_id, "!!! Изменился баланс кошелька " + address + ":\n" +
+                                String.format("%.8f", oldBalance) + " -> " + String.format("%.8f", newBalance) +
+                                " (" + (diff >= 0 ? "+" + String.format("%.8f", diff) : String.format("%.8f", diff)) + ")");
+
+                        userPortfolio.setBalance(newBalance);
+
+                        old_chat_id = chat_id;
+
+                        // save new balance to DB
+                        DBManager.updateWalletBalanceInUsersPortfolios(id, newBalance);
+                    }
+                }
+
+                try {
+                    Thread.sleep(61000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+
+        checkIsAnyWalletBalanceChange_Thread.start();
+    }
+
+    private static void startThreadForCheckPriceLevels() {
 
         Thread checkIsUserPriceLevelReached_Thread = new Thread(() -> {
 
@@ -90,10 +147,10 @@ public class Bot extends TelegramLongPollingBot {
                     getAllCoins();
                     for (UserPriceLevel userPriceLevel : usersPriceLevels) {
                         String coin = DBManager.getCoinByCurrencyId(userPriceLevel.getCurrency_id());
-                        int id = userPriceLevel.getId();
+                        Long id = userPriceLevel.getId();
                         double price_level = userPriceLevel.getPrice_level();
                         boolean is_higher_level = userPriceLevel.isIs_higher_level();
-                        Symbol symbol = symbols.get(userPriceLevel.getCurrency_id() - 1);
+                        Symbol symbol = symbols.get((int) (userPriceLevel.getCurrency_id() - 1));
                         Double cur_price = symbol.getPrice();
 
                         if (((cur_price <= price_level) && !is_higher_level) ||

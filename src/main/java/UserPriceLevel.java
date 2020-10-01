@@ -1,7 +1,7 @@
 public class UserPriceLevel {
-    private int id;
-    private int user_id;
-    private int currency_id;
+    private Long id;
+    private Long user_id;
+    private Long currency_id;
     private double price_level;
     private boolean is_notified;
     private boolean is_higher_level;
@@ -9,7 +9,7 @@ public class UserPriceLevel {
     public UserPriceLevel() {
     }
 
-    public UserPriceLevel(int user_id, int currency_id, double price_level, boolean is_notified, boolean is_higher_level) {
+    public UserPriceLevel(Long user_id, Long currency_id, double price_level, boolean is_notified, boolean is_higher_level) {
         this.user_id = user_id;
         this.currency_id = currency_id;
         this.price_level = price_level;
@@ -17,27 +17,27 @@ public class UserPriceLevel {
         this.is_higher_level = is_higher_level;
     }
 
-    public int getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
-    public int getUser_id() {
+    public Long getUser_id() {
         return user_id;
     }
 
-    public void setUser_id(int user_id) {
+    public void setUser_id(Long user_id) {
         this.user_id = user_id;
     }
 
-    public int getCurrency_id() {
+    public Long getCurrency_id() {
         return currency_id;
     }
 
-    public void setCurrency_id(int currency_id) {
+    public void setCurrency_id(Long currency_id) {
         this.currency_id = currency_id;
     }
 

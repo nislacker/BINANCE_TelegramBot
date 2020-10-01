@@ -51,6 +51,21 @@ public class DBManager {
         }
     }
 
+    public static void updateWalletBalanceInUsersPortfolios(Long id, Double newBalance) {
+        try (Connection con = DriverManager.getConnection(url, userName, password)) {
+
+            Statement stat = con.createStatement();
+
+            String sql = "UPDATE users_portfolios SET volume = " + newBalance + " WHERE id = " + id;
+            stat.executeUpdate(sql);
+            System.out.println("sql Update done!");
+
+        } catch (SQLException ex) {
+            System.out.println("Something wrong with connection to DB...");
+            ex.printStackTrace();
+        }
+    }
+
     // 100%
     public static boolean isNewUser(long chat_id) {
 
@@ -99,7 +114,7 @@ public class DBManager {
         }
     }
 
-    public static int getUserCurrencyId(long chat_id, String coin) {
+    public static Long getUserCurrencyId(long chat_id, String coin) {
 
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
@@ -109,19 +124,19 @@ public class DBManager {
             ResultSet res = stat.executeQuery(sql);
 
             while (res.next()) {
-                return res.getInt("currency_id");
+                return res.getLong("currency_id");
             }
-            return -1;
+            return -1L;
 
         } catch (SQLException ex) {
             System.out.println("Something wrong with connection to DB...");
             ex.printStackTrace();
-            return -1;
+            return -1L;
         }
     }
 
     // 100%
-    public static int getUserIdByChatId(long chat_id) {
+    public static Long getUserIdByChatId(long chat_id) {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
@@ -130,18 +145,18 @@ public class DBManager {
             ResultSet res = stat.executeQuery(sql);
 
             while (res.next()) {
-                return res.getInt("id");
+                return res.getLong("id");
             }
-            return -1;
+            return -1L;
 
         } catch (SQLException ex) {
             System.out.println("Something wrong with connection to DB...");
             ex.printStackTrace();
-            return -1;
+            return -1L;
         }
     }
 
-    public static long getChatIdByUserId(int id) {
+    public static long getChatIdByUserId(Long id) {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
@@ -162,7 +177,7 @@ public class DBManager {
     }
 
     // 100%
-    public static int getCurrencyIdByCoin(String coin) {
+    public static Long getCurrencyIdByCoin(String coin) {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
@@ -171,19 +186,19 @@ public class DBManager {
             ResultSet res = stat.executeQuery(sql);
 
             while (res.next()) {
-                return res.getInt("id");
+                return res.getLong("id");
             }
-            return -1;
+            return -1L;
 
         } catch (SQLException ex) {
             System.out.println("Something wrong with connection to DB...");
             ex.printStackTrace();
-            return -1;
+            return -1L;
         }
     }
 
     // 100%
-    public static String getCoinByCurrencyId(int currency_id) {
+    public static String getCoinByCurrencyId(Long currency_id) {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
@@ -209,7 +224,7 @@ public class DBManager {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
-            int user_id = getUserIdByChatId(chat_id);
+            Long user_id = getUserIdByChatId(chat_id);
 
             String sql = "INSERT users_currencies VALUES ";
 
@@ -254,7 +269,7 @@ public class DBManager {
 
             Statement stat = con.createStatement();
 
-            int user_id = getUserIdByChatId(chat_id);
+            Long user_id = getUserIdByChatId(chat_id);
 
             String sql =
                     "INSERT users_price_levels(user_id, currency_id, price_level, is_higher_level) VALUES ("
@@ -283,9 +298,9 @@ public class DBManager {
 
             while (res.next()) {
                 UserPriceLevel userPriceLevel = new UserPriceLevel();
-                userPriceLevel.setId(res.getInt("id"));
-                userPriceLevel.setUser_id(res.getInt("user_id"));
-                userPriceLevel.setCurrency_id(res.getInt("currency_id"));
+                userPriceLevel.setId(res.getLong("id"));
+                userPriceLevel.setUser_id(res.getLong("user_id"));
+                userPriceLevel.setCurrency_id(res.getLong("currency_id"));
                 userPriceLevel.setPrice_level(res.getDouble("price_level"));
                 userPriceLevel.setIs_higher_level(res.getBoolean("is_higher_level"));
                 userPriceLevel.setIs_notified(res.getBoolean("is_notified"));
@@ -300,7 +315,7 @@ public class DBManager {
         return userPriceLevels;
     }
 
-    public static void setIsNotifiedTrue(int id) {
+    public static void setIsNotifiedTrue(Long id) {
 
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
@@ -322,7 +337,7 @@ public class DBManager {
 
             Statement stat = con.createStatement();
 
-            int user_id = getUserIdByChatId(chat_id);
+            Long user_id = getUserIdByChatId(chat_id);
 
             String sql;
 
@@ -351,7 +366,7 @@ public class DBManager {
         }
     }
 
-    public static ArrayList<UserPortfolio> getUserPortfoliosByUserId(int user_id) {
+    public static ArrayList<UserPortfolio> getUserPortfoliosByUserId(Long user_id) {
         System.out.println(user_id);
         ArrayList<UserPortfolio> userPortfolios = new ArrayList<>();
 
@@ -364,11 +379,11 @@ public class DBManager {
 
             while (res.next()) {
                 UserPortfolio userPortfolio = new UserPortfolio();
-                userPortfolio.setId(res.getInt("id"));
-                userPortfolio.setUser_id(res.getInt("user_id"));
-                userPortfolio.setCurrency_id(res.getInt("currency_id"));
+                userPortfolio.setId(res.getLong("id"));
+                userPortfolio.setUser_id(res.getLong("user_id"));
+                userPortfolio.setCurrency_id(res.getLong("currency_id"));
                 userPortfolio.setAddress(res.getString("address"));
-                userPortfolio.setVolume(res.getDouble("volume"));
+                userPortfolio.setBalance(res.getDouble("volume"));
                 userPortfolios.add(userPortfolio);
             }
 
@@ -384,7 +399,7 @@ public class DBManager {
         try (Connection con = DriverManager.getConnection(url, userName, password)) {
 
             Statement stat = con.createStatement();
-            int user_id = getUserIdByChatId(chat_id);
+            Long user_id = getUserIdByChatId(chat_id);
 
             String sql = "DELETE FROM users_currencies WHERE user_id = " + user_id + " AND currency_id IN (";
 
@@ -401,5 +416,34 @@ public class DBManager {
             ex.printStackTrace();
             return false;
         }
+    }
+
+    public static ArrayList<UserPortfolio> getAllUserPortfolios() {
+
+        ArrayList<UserPortfolio> userPortfolios = new ArrayList<>();
+
+        try (Connection con = DriverManager.getConnection(url, userName, password)) {
+
+            Statement stat = con.createStatement();
+            String sql = "SELECT id, user_id, currency_id,address,volume FROM users_portfolios";
+
+            ResultSet res = stat.executeQuery(sql);
+
+            while (res.next()) {
+                UserPortfolio userPortfolio = new UserPortfolio();
+                userPortfolio.setId(res.getLong("id"));
+                userPortfolio.setUser_id(res.getLong("user_id"));
+                userPortfolio.setCurrency_id(res.getLong("currency_id"));
+                userPortfolio.setAddress(res.getString("address"));
+                userPortfolio.setBalance(res.getDouble("volume"));
+                userPortfolios.add(userPortfolio);
+            }
+
+        } catch (SQLException ex) {
+            System.out.println("Something wrong with connection to DB...");
+            ex.printStackTrace();
+        }
+
+        return userPortfolios;
     }
 }
