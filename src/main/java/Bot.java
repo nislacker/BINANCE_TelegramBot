@@ -89,6 +89,8 @@ public class Bot extends TelegramLongPollingBot {
 
                 for (UserPortfolio userPortfolio : userPortfolios) {
                     Long id = userPortfolio.getId();
+                    String coin = DBManager.getCoinByCurrencyId(userPortfolio.getCurrency_id());
+                    coin = coin.substring(0, 3);
                     String address = userPortfolio.getAddress();
                     Double oldBalance = userPortfolio.getBalance();
                     Double newBalance = Blockcypher.getBalanceByAnyWalletAddress(address);
@@ -111,7 +113,7 @@ public class Bot extends TelegramLongPollingBot {
                             }
                         }
 
-                        sendMessage(chat_id, "!!! Изменился баланс кошелька " + address + ":\n" +
+                        sendMessage(chat_id, "!!! Изменился баланс " + coin + "-кошелька " + address + ":\n" +
                                 String.format("%.8f", oldBalance) + " -> " + String.format("%.8f", newBalance) +
                                 " (" + (diff >= 0 ? "+" + String.format("%.8f", diff) : String.format("%.8f", diff)) + ")");
 
