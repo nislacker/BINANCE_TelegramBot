@@ -10,6 +10,7 @@ import org.telegram.telegrambots.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.exceptions.TelegramApiException;
 
+import java.io.FileInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.io.IOException;
@@ -29,8 +30,8 @@ public class Bot extends TelegramLongPollingBot {
     private static Integer add_price_level_MessageId = -1;
     private static Integer add_addresses_to_watch_MessageId = -1;
     private static Integer user_entered_wallet_balance = -1;
-    private static final String BOT_USERNAME = "mycryptoinfomvc777bot";
-    private static final String TOKEN = "1340695166:AAGMWgwQFoKYSCaK8DObbkHdPx0KGJWynJk";
+    private static String BOT_USERNAME;// = "mycryptoinfomvc777bot";
+    private static String TOKEN;// = "1340695166:AAGMWgwQFoKYSCaK8DObbkHdPx0KGJWynJk";
 
     private static String lang = "ru"; // "en"
 
@@ -39,7 +40,26 @@ public class Bot extends TelegramLongPollingBot {
 //        String ETH_address = "0x6431103b981fbf6e0d6215a9e885e68942672ceb";
 //        String BTC_address = "bc1qy8wyq6wt7mlu22haa83f4647g863aknquhpcqq";
 
-        ApiContextInitializer.init();
+        FileInputStream fis;
+        Properties property = new Properties();
+
+        try {
+            fis = new FileInputStream("src/main/resources/config.properties");
+            property.load(fis);
+
+            BOT_USERNAME = property.getProperty("BOT_USERNAME");
+            TOKEN = property.getProperty("TOKEN");
+
+            System.out.println("BOT_USERNAME: " + BOT_USERNAME
+                    + ", TOKEN: " + TOKEN);
+
+        } catch (IOException e) {
+            System.err.println("ОШИБКА: Файл свойств отсуствует!");
+        }
+
+        return;
+
+/*        ApiContextInitializer.init();
         TelegramBotsApi telegramBotsApi = new TelegramBotsApi();
 
         try {
@@ -48,7 +68,7 @@ public class Bot extends TelegramLongPollingBot {
             telegramBotsApi.registerBot(new Bot());
         } catch (TelegramApiException e) {
             e.printStackTrace();
-        }
+        }*/
     }
 
     /**
