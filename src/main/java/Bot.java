@@ -30,8 +30,8 @@ public class Bot extends TelegramLongPollingBot {
     private static Integer add_price_level_MessageId = -1;
     private static Integer add_addresses_to_watch_MessageId = -1;
     private static Integer user_entered_wallet_balance = -1;
-    private static String BOT_USERNAME;// = "mycryptoinfomvc777bot";
-    private static String TOKEN;// = "1340695166:AAGMWgwQFoKYSCaK8DObbkHdPx0KGJWynJk";
+    private static String BOT_USERNAME = "YOUR_BOT_USERNAME";
+    private static String TOKEN = "YOUR_TOKEN";
 
     private static String lang = "ru"; // "en"
 
